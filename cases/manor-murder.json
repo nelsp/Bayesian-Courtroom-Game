@@ -1,0 +1,131 @@
+{
+  "meta": {
+    "version": "1.0",
+    "author": "Original prototype",
+    "created": "2025-01-01",
+    "difficulty": "advanced",
+    "estimated_minutes": 15,
+    "tags": ["murder", "poison", "literary", "forensics"]
+  },
+  "case": {
+    "name": "The Riverside Manor Murder",
+    "image": "manor-murder.jpg",
+    "summary": "A famous novelist poisoned at her literary gala — her personal assistant is the prime suspect.",
+    "description": "Famous novelist Eleanor Wright was found poisoned at her Riverside Manor during her annual literary gala. The victim was discovered in her study after excusing herself from 25 guests (5 family members, 10 close friends, and 10 literary associates). The defendant is her personal assistant who had access to her medication and was the last person seen with her.",
+    "details": "The victim died from cyanide poisoning, which was added to her heart medication. The cause of death was initially thought to be natural until toxicology reports indicated homicide. The defendant is Eleanor's personal assistant of 7 years who claims she only delivered Eleanor's regular medication as instructed. The victim recently made significant changes to her will.",
+    "population": 25,
+    "setting": "Riverside Manor — Annual literary gala, evening"
+  },
+  "prior": {
+    "db": -14,
+    "odds_description": "1 in 25",
+    "odds_numeric": 0.04,
+    "reasoning": "Initially, assuming any of the 25 guests could be guilty, the prior probability is 1/25."
+  },
+  "evidence": [
+    {
+      "name": "Access to Medication",
+      "summary": "The defendant managed the victim's medications and had direct access to the poisoned heart medication.",
+      "description": "The defendant was responsible for managing the victim's medications and had direct access to the heart medication that was poisoned.",
+      "guidance": {
+        "guilty_prompt": "If the defendant poisoned the medication, how likely is it that she would have had direct access to it?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that she would still have access to the medication as part of her normal duties?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.95,
+        "prob_innocent": 0.15,
+        "explanation": "If guilty, the defendant would almost certainly need access to the medication. If innocent, there's a lower chance the defendant would be involved with the specific medication that was tampered with versus other staff or guests."
+      }
+    },
+    {
+      "name": "Financial Motive",
+      "summary": "Defendant in significant debt; victim's new will leaves her a substantial bequest.",
+      "description": "Bank records show the defendant was in significant debt, and the recent changes to the victim's will included a substantial bequest to the defendant.",
+      "guidance": {
+        "guilty_prompt": "If the defendant killed for money, how likely is it that she would be in financial trouble and named in the will?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that a trusted assistant would be both in debt and named in her employer's will?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.80,
+        "prob_innocent": 0.10,
+        "explanation": "A guilty person often has financial motivation. Many people have financial troubles without resorting to murder, but the specific timing of the will change creates a stronger correlation."
+      }
+    },
+    {
+      "name": "Witness Testimony",
+      "summary": "A guest saw the defendant entering the victim's study with a glass of water 30 minutes before discovery.",
+      "description": "A guest reports seeing the defendant entering the victim's private study carrying a glass of water, 30 minutes before the body was discovered.",
+      "guidance": {
+        "guilty_prompt": "If the defendant administered the poison, how likely is it that she would be seen entering the study with a drink?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that she would enter the study to deliver medication and water as part of her normal routine?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.90,
+        "prob_innocent": 0.40,
+        "explanation": "If guilty, the defendant would need an opportunity to administer the poison. If innocent, the defendant may have legitimately been delivering medication and water as part of regular duties."
+      }
+    },
+    {
+      "name": "Chemical Knowledge",
+      "summary": "Defendant's computer search history includes recent research on undetectable poisons including cyanide.",
+      "description": "Search history on the defendant's computer showed recent research on undetectable poisons, including cyanide compounds.",
+      "guidance": {
+        "guilty_prompt": "If the defendant planned and carried out the poisoning, how likely is it that she would have researched the method beforehand?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that she would have searched for information about poisons for a legitimate reason?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.85,
+        "prob_innocent": 0.05,
+        "explanation": "A guilty person might research methods before committing the crime. An innocent person would rarely have reason to research such specific poisons, though the assistant might claim research was for one of the novelist's upcoming mystery books."
+      }
+    },
+    {
+      "name": "Timeline Discrepancy",
+      "summary": "Defendant said she delivered medication at 8:15 PM, but security footage shows her entering at 7:45 PM.",
+      "description": "The defendant initially stated they delivered medication at 8:15 PM, but security footage shows them entering the study at 7:45 PM, contradicting their initial statement.",
+      "guidance": {
+        "guilty_prompt": "If the defendant is guilty, how likely is it that she would lie or be evasive about the timeline?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that she would simply misremember the time during a stressful event?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.75,
+        "prob_innocent": 0.20,
+        "explanation": "A guilty person is more likely to lie about their timeline. An innocent person might misremember times during a stressful event."
+      }
+    },
+    {
+      "name": "Trace Evidence",
+      "summary": "Microscopic traces of cyanide found under the defendant's fingernails.",
+      "description": "Microscopic traces of cyanide were found under the defendant's fingernails during forensic examination.",
+      "guidance": {
+        "guilty_prompt": "If the defendant handled the cyanide to poison the medication, how likely is it that trace amounts would remain under her nails?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that cyanide traces would end up under her nails from environmental contamination or handling the container afterward?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.92,
+        "prob_innocent": 0.08,
+        "explanation": "If guilty, handling the poison would likely leave trace evidence. If innocent, such traces would be rare, though possible through environmental contamination."
+      }
+    },
+    {
+      "name": "Character Testimony",
+      "summary": "Multiple witnesses testify to the close, trusting relationship between victim and defendant.",
+      "description": "Multiple witnesses testify to the close, positive relationship between the victim and defendant, stating the victim trusted the defendant implicitly.",
+      "guidance": {
+        "guilty_prompt": "If the defendant is the killer, how likely is it that she would have maintained a convincing appearance of loyalty and trust?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that witnesses would confirm the genuine, trusting nature of their relationship?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.60,
+        "prob_innocent": 0.85,
+        "explanation": "An innocent, trusted assistant would have strong character references. A guilty person might have cultivated the same relationships as cover."
+      }
+    }
+  ],
+  "context_sections": [
+    {
+      "title": "Literary Context",
+      "content": "The victim was a mystery novelist who wrote murder mysteries featuring poisonings, creating an ironic element and possibly suggesting the murderer was inspired by her work."
+    }
+  ]
+}

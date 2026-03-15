@@ -1,0 +1,103 @@
+{
+  "meta": {
+    "version": "1.0",
+    "author": "Original prototype",
+    "created": "2025-01-01",
+    "difficulty": "beginner",
+    "estimated_minutes": 8,
+    "tags": ["theft", "digital-evidence", "household"]
+  },
+  "case": {
+    "name": "The Stolen Intimate Photos Case",
+    "image": "stolen-photos.jpg",
+    "summary": "Explicit photos stolen from a locked drawer — the cleaning lady is accused, but digital clues point elsewhere.",
+    "description": "A collection of sexually explicit photos of Mrs. Reynolds has gone missing from a locked drawer in the master bedroom of the Reynolds estate. The cleaning lady, Maria Gonzalez, has been accused of stealing them. Only five people had regular access to the house and bedroom: the cleaning lady, Mr. and Mrs. Reynolds, the maintenance man, and Mr. Reynolds' brother.",
+    "details": "The photos were stored in a locked drawer in the bedroom vanity. Mrs. Reynolds discovered they were missing after returning from a weekend trip. The drawer showed signs of being forced open with a thin tool. The cleaning lady, Maria, has worked for the family for 8 years with no prior incidents. The photos disappeared approximately two weeks after Mr. Reynolds' brother stayed at the house following a personal crisis.",
+    "population": 5,
+    "setting": "Reynolds Estate — Suburban residence"
+  },
+  "prior": {
+    "db": -7,
+    "odds_description": "1 in 5",
+    "odds_numeric": 0.2,
+    "reasoning": "Initially, assuming any of the 5 people with access to the house could be guilty, the prior probability is 1/5."
+  },
+  "evidence": [
+    {
+      "name": "Cleaning Schedule Records",
+      "summary": "Cleaning lady was alone in the house on three occasions during the window when photos went missing.",
+      "description": "Records show the cleaning lady was alone in the house on three occasions between when the photos were last seen and when they were discovered missing.",
+      "guidance": {
+        "guilty_prompt": "If the cleaning lady stole the photos, how likely is it that she would have been alone in the house during the window of opportunity?",
+        "innocent_prompt": "If the cleaning lady is innocent, how likely is it that she would have been alone in the house as part of her normal cleaning schedule?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.95,
+        "prob_innocent": 0.60,
+        "explanation": "If guilty, the cleaning lady would need opportunity to access the bedroom alone. If innocent, her presence alone in the house multiple times is simply part of her normal cleaning duties."
+      }
+    },
+    {
+      "name": "Small Pry Mark Analysis",
+      "summary": "Drawer lock was forced with a thin metal tool — a similar tool found in Maria's cleaning supplies.",
+      "description": "The lock on the drawer was forced open with a thin metal tool. A similar tool was found in Maria's cleaning supplies.",
+      "guidance": {
+        "guilty_prompt": "If Maria forced the drawer open, how likely is it that a matching tool would be found in her supplies?",
+        "innocent_prompt": "If Maria is innocent, how likely is it that she would happen to have a similar common household tool in her cleaning kit?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.80,
+        "prob_innocent": 0.25,
+        "explanation": "If guilty, Maria would likely use a tool she had access to. If innocent, many people have access to similar common household tools."
+      }
+    },
+    {
+      "name": "Financial Records",
+      "summary": "Maria recently deposited $2,000 cash — she claims it was a family gift.",
+      "description": "Bank records show Maria recently made a $2,000 cash deposit, which she claims was a gift from her family. The timing coincides with the disappearance of the photos.",
+      "guidance": {
+        "guilty_prompt": "If Maria sold the stolen photos, how likely is it that she would have a suspicious cash deposit around the same time?",
+        "innocent_prompt": "If Maria is innocent, how likely is it that she would coincidentally receive a legitimate cash gift around the same time the photos went missing?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.70,
+        "prob_innocent": 0.15,
+        "explanation": "If guilty, this could represent payment for selling the photos. If innocent, people occasionally receive cash gifts, though the timing is suspicious."
+      }
+    },
+    {
+      "name": "Browser History",
+      "summary": "Mr. Reynolds' brother's laptop shows searches for 'selling celebrity intimate photos' after his visit.",
+      "description": "Mr. Reynolds' brother's laptop shows searches for 'selling celebrity intimate photos' and 'how much are leaked photos worth' the day after he left the Reynolds estate.",
+      "guidance": {
+        "guilty_prompt": "If Maria is the one who stole the photos, how likely is it that the brother would independently be searching for how to sell intimate photos?",
+        "innocent_prompt": "If Maria is innocent, how likely is it that the brother's searches indicate he is the actual thief?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.20,
+        "prob_innocent": 0.85,
+        "explanation": "If Maria is guilty, it's unlikely the brother would be researching photo selling. If Maria is innocent, these searches strongly suggest someone else was planning to sell the photos."
+      }
+    },
+    {
+      "name": "Anonymous Tip",
+      "summary": "Similar photos found on a private marketplace, posted by a user with a handle matching the maintenance man's style.",
+      "description": "Police received an anonymous call claiming to have seen similar photos of Mrs. Reynolds on a private content marketplace, posted by a user with the handle 'MechMan52'. The maintenance man's social media uses similar handles.",
+      "guidance": {
+        "guilty_prompt": "If Maria stole and sold the photos, how likely is it that they would appear under an online handle connected to someone else entirely?",
+        "innocent_prompt": "If Maria is innocent, how likely is it that the photos appearing under the maintenance man's handle means he is involved?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.10,
+        "prob_innocent": 0.70,
+        "explanation": "If Maria is guilty, it's unlikely the photos would be connected to someone else's online persona. If innocent, this evidence points to the maintenance man as a potential alternative suspect."
+      }
+    }
+  ],
+  "context_sections": [
+    {
+      "title": "Household Dynamics",
+      "content": "Recent marital issues between Mr. and Mrs. Reynolds; Mr. Reynolds' brother has financial problems; Maintenance man was recently given notice his position would be eliminated. Multiple individuals had both access and potential motives, creating a complex environment of competing incentives and opportunities."
+    }
+  ]
+}

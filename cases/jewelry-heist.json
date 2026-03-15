@@ -1,0 +1,97 @@
+{
+  "meta": {
+    "version": "1.0",
+    "author": "Original prototype",
+    "created": "2025-01-01",
+    "difficulty": "advanced",
+    "estimated_minutes": 10,
+    "tags": ["heist", "property", "digital-evidence"]
+  },
+  "case": {
+    "name": "The Diamond District Heist",
+    "image": "jewelry-heist.jpg",
+    "summary": "A $2 million diamond heist from a high-security store — the suspect once worked for the security company.",
+    "description": "A collection of rare diamonds worth $2 million was stolen from a high-security jewelry store during business hours. The alarm system was disabled using a specialized technique known only to a handful of people. The defendant, a former employee of the security company that installed the system, was seen in the store shortly before the theft.",
+    "details": "The heist was executed with precision: the alarm was disabled remotely, display cases were opened without forced entry, and the diamonds vanished within a 10-minute window. Investigators believe the perpetrator had intimate knowledge of the store's security infrastructure.",
+    "population": 350000,
+    "setting": "Diamond District — Major metropolitan area, during business hours"
+  },
+  "prior": {
+    "db": -55,
+    "odds_description": "1 in 350,000",
+    "odds_numeric": 0.0000028571,
+    "reasoning": "Base rate from the metropolitan population. This is a very low prior, meaning the evidence needs to be very strong to overcome it."
+  },
+  "evidence": [
+    {
+      "name": "Security Camera Footage",
+      "summary": "Suspect recorded browsing in the store 30 minutes before the theft was discovered.",
+      "description": "The suspect was recorded browsing in the store 30 minutes before the theft was discovered.",
+      "guidance": {
+        "guilty_prompt": "If the defendant committed the heist, how likely is it that they would be captured on camera inside the store shortly before the theft?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that they would coincidentally be browsing in the store on the same day as the theft?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.9,
+        "prob_innocent": 0.03,
+        "explanation": "A guilty person would likely need to case the store beforehand. An innocent person being in the specific store on the specific day is very unlikely given the large population."
+      }
+    },
+    {
+      "name": "Security System Knowledge",
+      "summary": "Alarm disabled using a specialized technique — suspect previously worked for the security company.",
+      "description": "The alarm was disabled using a specialized technique. The suspect previously worked for the security company that installed the system.",
+      "guidance": {
+        "guilty_prompt": "If the defendant committed the heist, how likely is it that they would have the specialized knowledge needed to disable the alarm?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that someone with security expertise would coincidentally be a suspect?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.85,
+        "prob_innocent": 0.01,
+        "explanation": "Very few people have the knowledge to disable this system. A guilty person who formerly worked for the company would almost certainly have this knowledge."
+      }
+    },
+    {
+      "name": "Phone Records",
+      "summary": "Cell tower data places the suspect's phone near the store at the time of the theft.",
+      "description": "Cell tower data places the suspect's phone near the jewelry store at the time of the theft.",
+      "guidance": {
+        "guilty_prompt": "If the defendant committed the heist, how likely is it that their phone would be detected near the store?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that they would happen to be near the store at the time of the theft?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.95,
+        "prob_innocent": 0.2,
+        "explanation": "A guilty person would likely have their phone nearby unless they deliberately left it elsewhere. Cell tower data has a broad radius, so innocent people in the area would also register."
+      }
+    },
+    {
+      "name": "Recent Purchases",
+      "summary": "Suspect made several large cash purchases the week after the theft despite previous financial troubles.",
+      "description": "The suspect, previously in financial trouble, made several large cash purchases the week after the theft.",
+      "guidance": {
+        "guilty_prompt": "If the defendant stole and fenced the diamonds, how likely is it that they would start making large purchases shortly after?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that they would coincidentally receive a large sum of cash around the same time as the theft?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.75,
+        "prob_innocent": 0.05,
+        "explanation": "Sudden wealth after a heist is suspicious. An innocent person suddenly spending large amounts of cash is relatively rare."
+      }
+    },
+    {
+      "name": "Forensic Evidence",
+      "summary": "A partial fingerprint on the display case matches several comparison points with the suspect.",
+      "description": "A partial fingerprint found on the display case shares several points of comparison with the suspect's fingerprints.",
+      "guidance": {
+        "guilty_prompt": "If the defendant opened the display case to steal the diamonds, how likely is it that a partial fingerprint would be left behind?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that a partial print could be a coincidental match or from a previous visit?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.7,
+        "prob_innocent": 0.08,
+        "explanation": "A partial fingerprint is less conclusive than a full print, but several matching comparison points is significant."
+      }
+    }
+  ]
+}

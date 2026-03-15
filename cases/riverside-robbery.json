@@ -1,0 +1,124 @@
+{
+  "meta": {
+    "version": "1.0",
+    "author": "Original prototype",
+    "created": "2025-01-01",
+    "difficulty": "beginner",
+    "estimated_minutes": 12,
+    "tags": ["robbery", "eyewitness", "circumstantial"]
+  },
+  "case": {
+    "name": "The Riverside Robbery",
+    "image": "riverside-robbery.png",
+    "summary": "A convenience store robbery with conflicting eyewitness testimony and a broken alibi.",
+    "description": "A convenience store was robbed at gunpoint on March 15th. The defendant was arrested three days later based on witness identification. Security cameras were not working at the time of the robbery. The case involves eyewitness testimony, circumstantial evidence, and alibis.",
+    "population": 75000,
+    "setting": "Riverside, California — March 2024"
+  },
+  "prior": {
+    "db": -48.75,
+    "odds_description": "1 in 75,000",
+    "odds_numeric": 0.0000133,
+    "reasoning": "Base rate probability that any random person in the city committed this specific robbery, assuming one perpetrator."
+  },
+  "evidence": [
+    {
+      "name": "Eyewitness Identification",
+      "summary": "Store clerk identifies the defendant from a police lineup.",
+      "description": "The store clerk identified the defendant from a police lineup two days after the robbery. The clerk observed the robber for approximately 2-3 minutes during the incident. The lighting in the store was adequate, but the robber wore a baseball cap pulled low.",
+      "guidance": {
+        "guilty_prompt": "If the defendant actually committed this robbery, how likely is it that the store clerk would correctly pick them out of a police lineup?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that the clerk would mistakenly identify them from the lineup?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.65,
+        "prob_innocent": 0.35,
+        "explanation": "Eyewitness identification has known reliability issues. Studies show lineup identifications are correct about 65% of the time under good conditions, but stress, poor lighting, and weapon focus can reduce accuracy."
+      }
+    },
+    {
+      "name": "Fingerprints on Door Handle",
+      "summary": "Defendant's fingerprints found on the store's exterior door handle.",
+      "description": "Police found the defendant's fingerprints on the exterior door handle of the convenience store. The defendant claims he visited the store earlier that week to buy cigarettes. Store employees cannot confirm this visit, and the defendant cannot provide a receipt.",
+      "guidance": {
+        "guilty_prompt": "If the defendant committed the robbery, how likely is it that his fingerprints would be found on the door handle?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that his fingerprints would still be on the door handle from a previous visit?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.7,
+        "prob_innocent": 0.4,
+        "explanation": "The fingerprints place the defendant at the scene, but the timing is unclear. The defendant's explanation is plausible — many people touch door handles when entering stores."
+      }
+    },
+    {
+      "name": "Similar Physical Build",
+      "summary": "Defendant matches the general description given by the witness.",
+      "description": "The defendant matches the general physical description given by the witness: approximately 5'8\"-5'10\", medium build, wearing dark clothing. However, this description could fit thousands of people in the area.",
+      "guidance": {
+        "guilty_prompt": "If the defendant is the robber, how likely is it that he would match the physical description given by the witness?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that he would still match this general physical description?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.3,
+        "prob_innocent": 0.7,
+        "explanation": "Physical similarity is very weak evidence. The description is generic and could apply to a large portion of the male population in the area."
+      }
+    },
+    {
+      "name": "Proximity to Scene",
+      "summary": "Defendant lives 6 blocks from the store and walks past it daily.",
+      "description": "The defendant lives approximately 6 blocks from the convenience store and walks past it regularly on his way to work. His normal route would take him directly past the store around the time of day when the robbery occurred.",
+      "guidance": {
+        "guilty_prompt": "If the defendant committed the robbery, how likely is it that he would live nearby and be familiar with the store's location?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that someone who lives in the area would happen to live near the crime scene?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.4,
+        "prob_innocent": 0.6,
+        "explanation": "Living near a crime scene is weak evidence. Many innocent people live in the vicinity of crimes."
+      }
+    },
+    {
+      "name": "Work Alibi Evidence",
+      "summary": "Defendant's alibi is contradicted — he left work early the day of the robbery.",
+      "description": "The defendant claims he was at work during the robbery (2:30 PM on a Tuesday). However, his supervisor says he left work early that day, around 1:45 PM, saying he felt sick. The robbery occurred at 2:30 PM, and the defendant's workplace is a 15-minute walk from the store. Co-workers confirm he seemed agitated when he left.",
+      "guidance": {
+        "guilty_prompt": "If the defendant committed the robbery, how likely is it that he would leave work early with a false excuse shortly before the crime?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that he would coincidentally leave work early and have a broken alibi?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.75,
+        "prob_innocent": 0.25,
+        "explanation": "This is significant evidence. The defendant's claimed alibi is contradicted by multiple witnesses. His early departure from work, the timing, and his reported agitation create a concerning pattern."
+      }
+    },
+    {
+      "name": "Financial Motivation",
+      "summary": "Defendant's bank account was overdrawn days before the robbery.",
+      "description": "Bank records show the defendant's checking account was overdrawn by $200 three days before the robbery, and he had received two overdraft notices. His rent was due the following week. The robbery netted approximately $180 in cash.",
+      "guidance": {
+        "guilty_prompt": "If the defendant committed the robbery, how likely is it that he would be in financial distress immediately beforehand?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that someone would coincidentally be in financial trouble around the time of a nearby robbery?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.6,
+        "prob_innocent": 0.4,
+        "explanation": "Financial stress provides a possible motive. The amount stolen roughly matches his immediate financial need. However, many people experience financial difficulties without committing crimes."
+      }
+    },
+    {
+      "name": "Character Witness Testimony",
+      "summary": "Friends and employer testify the defendant is honest and non-violent.",
+      "description": "Three long-time friends and the defendant's employer testified that he is honest, hardworking, and non-violent. He has no prior criminal record. His employer describes him as reliable and trustworthy, noting that he handles cash regularly at work without any issues.",
+      "guidance": {
+        "guilty_prompt": "If the defendant committed the robbery, how likely is it that he would still have friends and an employer who believe he is honest?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that people who know him would vouch for his good character?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.2,
+        "prob_innocent": 0.8,
+        "explanation": "Good character evidence and lack of criminal history favor innocence. People who regularly handle money honestly at work are statistically less likely to commit robbery."
+      }
+    }
+  ]
+}

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Bayesian Courtroom</title>
+  <link rel="stylesheet" href="/css/game.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- Screen 1: Welcome -->
+    <section id="screen-welcome" class="screen active">
+      <div class="screen-content welcome-content">
+        <div class="logo-area">
+          <div class="gavel-icon">&#9878;</div>
+          <h1>Bayesian<br>Courtroom</h1>
+          <p class="tagline">Weigh the evidence. Decide the verdict.<br>How certain must you be?</p>
+        </div>
+        <button class="btn btn-primary btn-lg" onclick="App.showScreen('case-select')">Start a New Case</button>
+        <details class="how-to-play">
+          <summary>How to Play</summary>
+          <div class="how-to-content">
+            <p>Imagine you hear a noise outside. Before looking, you might think there's a <strong>10% chance</strong> it's a deer — that's your <em>prior probability</em>.</p>
+            <p>Then you see hoof prints. That's <strong>evidence</strong>. Hoof prints are very likely if it's a deer, and unlikely if it's a cat. So your belief that it's a deer goes <em>up</em>.</p>
+            <p>In this game, you're a juror. You start with a base rate — how likely is it that any random person committed the crime? Then you evaluate each piece of evidence:</p>
+            <ul>
+              <li><strong>How likely is this evidence if the defendant is guilty?</strong></li>
+              <li><strong>How likely is this evidence if the defendant is innocent?</strong></li>
+            </ul>
+            <p>Each answer shifts your belief. At the end, you'll see whether the evidence meets your personal standard for conviction.</p>
+            <p>We measure evidence in <strong>decibels (dB)</strong> — a way to add up how strong or weak each piece of evidence is. Positive dB pushes toward guilt; negative dB pushes toward innocence.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- Screen 2: Case Selection -->
+    <section id="screen-case-select" class="screen">
+      <div class="screen-content">
+        <div class="screen-header">
+          <button class="btn-back" onclick="App.showScreen('welcome')">&larr;</button>
+          <h2>Choose a Case</h2>
+        </div>
+        <div id="case-list" class="case-list">
+          <div class="loading">Loading cases...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 3: Set Your Standard -->
+    <section id="screen-standard" class="screen">
+      <div class="screen-content">
+        <div class="screen-header">
+          <button class="btn-back" onclick="App.showScreen('case-select')">&larr;</button>
+          <h2>Set Your Standard</h2>
+        </div>
+        <p class="guidance-text">Before you see the case, decide how certain you need to be to convict. What false-conviction rate can you accept?</p>
+        <div class="threshold-options">
+          <button class="threshold-btn" data-tolerance="10" onclick="App.setThreshold(10)">
+            <span class="threshold-pct">90%</span>
+            <span class="threshold-desc">1 in 10 convictions could be wrong</span>
+          </button>
+          <button class="threshold-btn" data-tolerance="20" onclick="App.setThreshold(20)">
+            <span class="threshold-pct">95%</span>
+            <span class="threshold-desc">1 in 20 convictions could be wrong</span>
+          </button>
+          <button class="threshold-btn selected" data-tolerance="100" onclick="App.setThreshold(100)">
+            <span class="threshold-pct">99%</span>
+            <span class="threshold-desc">1 in 100 convictions could be wrong</span>
+          </button>
+          <button class="threshold-btn" data-tolerance="200" onclick="App.setThreshold(200)">
+            <span class="threshold-pct">99.5%</span>
+            <span class="threshold-desc">1 in 200 convictions could be wrong</span>
+          </button>
+          <button class="threshold-btn" data-tolerance="1000" onclick="App.setThreshold(1000)">
+            <span class="threshold-pct">99.9%</span>
+            <span class="threshold-desc">1 in 1,000 convictions could be wrong</span>
+          </button>
+        </div>
+        <div class="threshold-result">
+          <p>Your conviction threshold: <strong id="threshold-db">20.0 dB</strong></p>
+        </div>
+        <div class="input-method-toggle">
+          <label>Evidence input method:</label>
+          <div class="toggle-group">
+            <button class="toggle-btn active" data-method="slider" onclick="App.setInputMethod('slider')">0–10 Slider</button>
+            <button class="toggle-btn" data-method="direct" onclick="App.setInputMethod('direct')">Exact Probability</button>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-lg" onclick="App.startCase()">Continue</button>
+      </div>
+    </section>
+
+    <!-- Screen 4: Case Presentation -->
+    <section id="screen-case-presentation" class="screen">
+      <div class="screen-content">
+        <div class="screen-header">
+          <button class="btn-back" onclick="App.showScreen('standard')">&larr;</button>
+          <h2 id="case-title"></h2>
+        </div>
+        <div id="case-image-container" class="case-image-container"></div>
+        <div id="case-setting" class="case-setting"></div>
+        <div id="case-description" class="case-narrative"></div>
+        <div id="case-details" class="case-narrative case-details"></div>
+        <div class="prior-section">
+          <h3>Starting Point: Prior Probability</h3>
+          <div id="prior-info" class="prior-info"></div>
+        </div>
+        <div id="context-sections"></div>
+        <button class="btn btn-primary btn-lg" onclick="App.showScreen('evidence-preview')">Review the Evidence List</button>
+      </div>
+    </section>
+
+    <!-- Screen 5: Evidence Preview -->
+    <section id="screen-evidence-preview" class="screen">
+      <div class="screen-content">
+        <div class="screen-header">
+          <button class="btn-back" onclick="App.showScreen('case-presentation')">&larr;</button>
+          <h2>Evidence Overview</h2>
+        </div>
+        <p class="evidence-count" id="evidence-count-text"></p>
+        <div id="evidence-preview-list" class="evidence-preview-list"></div>
+        <button class="btn btn-primary btn-lg" onclick="App.beginEvaluation()">Begin Evaluation</button>
+      </div>
+    </section>
+
+    <!-- Screen 6: Evidence Evaluation -->
+    <section id="screen-evidence-eval" class="screen">
+      <div class="screen-content">
+        <div class="screen-header">
+          <button class="btn-back" onclick="App.goBackFromEvidence()">&larr;</button>
+          <h2 id="evidence-title"></h2>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="evidence-progress"></div>
+          <span class="progress-label" id="evidence-progress-label"></span>
+        </div>
+        <div id="evidence-description-text" class="evidence-description"></div>
+
+        <div class="probability-meter-section">
+          <label class="meter-label">Running Probability of Guilt</label>
+          <div class="probability-meter">
+            <div class="meter-fill" id="running-meter-fill"></div>
+            <div class="meter-threshold" id="running-meter-threshold"></div>
+          </div>
+          <div class="meter-labels">
+            <span>0% Innocent</span>
+            <span id="running-meter-value"></span>
+            <span>100% Guilty</span>
+          </div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-group" id="guilty-input-group">
+            <label class="guidance-prompt" id="guilty-prompt"></label>
+            <div class="slider-input" id="guilty-slider-container">
+              <input type="range" id="guilty-slider" min="0" max="10" value="5" step="1" class="evidence-slider">
+              <div class="slider-value"><span id="guilty-slider-val">5</span> &rarr; <span id="guilty-prob-display">50%</span></div>
+            </div>
+            <div class="direct-input" id="guilty-direct-container" style="display:none">
+              <div class="number-input-wrapper">
+                <button class="num-btn" onclick="App.adjustProb('guilty', -0.05)">&minus;</button>
+                <input type="number" id="guilty-direct" min="0.001" max="0.999" step="0.01" value="0.5">
+                <button class="num-btn" onclick="App.adjustProb('guilty', 0.05)">+</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="input-group" id="innocent-input-group">
+            <label class="guidance-prompt" id="innocent-prompt"></label>
+            <div class="slider-input" id="innocent-slider-container">
+              <input type="range" id="innocent-slider" min="0" max="10" value="5" step="1" class="evidence-slider">
+              <div class="slider-value"><span id="innocent-slider-val">5</span> &rarr; <span id="innocent-prob-display">50%</span></div>
+            </div>
+            <div class="direct-input" id="innocent-direct-container" style="display:none">
+              <div class="number-input-wrapper">
+                <button class="num-btn" onclick="App.adjustProb('innocent', -0.05)">&minus;</button>
+                <input type="number" id="innocent-direct" min="0.001" max="0.999" step="0.01" value="0.5">
+                <button class="num-btn" onclick="App.adjustProb('innocent', 0.05)">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="live-calc" id="live-calc">
+          <div class="calc-row">
+            <span>Likelihood ratio</span>
+            <strong id="calc-lr">1.00</strong>
+          </div>
+          <div class="calc-row">
+            <span>dB update</span>
+            <strong id="calc-db" class="db-neutral">0.0 dB</strong>
+          </div>
+          <div class="calc-row">
+            <span>New cumulative probability</span>
+            <strong id="calc-new-prob">—</strong>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-lg" id="confirm-evidence-btn" onclick="App.confirmEvidence()">Confirm &amp; Continue</button>
+      </div>
+    </section>
+
+    <!-- Screen 7: Verdict -->
+    <section id="screen-verdict" class="screen">
+      <div class="screen-content">
+        <div class="screen-header">
+          <h2 id="verdict-case-name"></h2>
+        </div>
+
+        <div class="evidence-summary-table" id="evidence-summary-table"></div>
+
+        <div class="probability-meter-section final-meter">
+          <label class="meter-label">Final Probability of Guilt</label>
+          <div class="probability-meter">
+            <div class="meter-fill" id="final-meter-fill"></div>
+            <div class="meter-threshold" id="final-meter-threshold"></div>
+          </div>
+          <div class="meter-labels">
+            <span>0%</span>
+            <span id="final-meter-value"></span>
+            <span>100%</span>
+          </div>
+        </div>
+
+        <div class="verdict-announcement" id="verdict-announcement"></div>
+
+        <div id="reference-comparison" class="reference-comparison"></div>
+
+        <details class="detailed-results">
+          <summary>View Detailed Results</summary>
+          <pre id="detailed-results-json"></pre>
+        </details>
+
+        <button class="btn btn-primary btn-lg" onclick="App.playAgain()">Play Another Case</button>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="/js/visualizations.js"></script>
+  <script src="/js/evidence-input.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+{
+  "meta": {
+    "version": "1.0",
+    "author": "Original prototype",
+    "created": "2025-01-01",
+    "difficulty": "intermediate",
+    "estimated_minutes": 10,
+    "tags": ["murder", "forensics", "biker-gang"]
+  },
+  "case": {
+    "name": "The Roadhouse Murder",
+    "image": "biker-bar-murder.jpg",
+    "summary": "A throat-slashing at a biker bar — fingerprints on the murder weapon point to a non-biker regular.",
+    "description": "At the Edge of Town Bar, a patron's throat was slashed late Saturday night. The bar had 50 people: 20 members of the 'Steel Vultures' biker gang and 30 regular patrons. A non-biker whose fingerprints were found on the murder weapon has been charged.",
+    "details": "The victim was a regular patron with no known gang affiliations. The murder weapon was a hunting knife recovered from a trash bin behind the bar with 5 different sets of fingerprints on it. The defendant is a non-biker regular at the bar who claims he only handled the knife earlier in the evening to help cut limes for drinks.",
+    "population": 50,
+    "setting": "Edge of Town Bar — Late Saturday night"
+  },
+  "prior": {
+    "db": -15,
+    "odds_description": "1 in 30",
+    "odds_numeric": 0.0333,
+    "reasoning": "Initially, assuming any of the 30 non-bikers could be guilty (excluding the victim), the prior probability is 1/30."
+  },
+  "evidence": [
+    {
+      "name": "Fingerprints on Murder Weapon",
+      "summary": "Defendant's fingerprints found on the hunting knife among 5 sets of prints.",
+      "description": "The defendant's fingerprints were found on the murder weapon among 5 total sets of prints.",
+      "guidance": {
+        "guilty_prompt": "If the defendant actually committed this murder, how likely is it that his fingerprints would be on the knife?",
+        "innocent_prompt": "If the defendant is innocent and only handled the knife to cut limes, how likely is it that his prints would still be on the knife?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.98,
+        "prob_innocent": 0.13,
+        "explanation": "If guilty, the defendant's prints would almost certainly be on the knife (98%). If innocent, there's a lower chance that the defendant would have touched the knife for innocent reasons (prints found on 4 out of 30 non-bikers)."
+      }
+    },
+    {
+      "name": "Blood Spatter Evidence",
+      "summary": "Small amounts of blood spatter found on the defendant's clothing.",
+      "description": "Small amounts of blood spatter were found on the defendant's clothing.",
+      "guidance": {
+        "guilty_prompt": "If the defendant slashed the victim's throat, how likely is it that blood spatter would end up on his clothing?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that he would have blood spatter on his clothes from simply being nearby?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.95,
+        "prob_innocent": 0.05,
+        "explanation": "A guilty person would likely have blood spatter. An innocent person might have small amounts from being nearby during the attack or from other bar activities."
+      }
+    },
+    {
+      "name": "Witness Testimony",
+      "summary": "A witness saw the defendant arguing with the victim 30 minutes before the murder.",
+      "description": "A witness claims they saw the defendant arguing with the victim 30 minutes before the murder.",
+      "guidance": {
+        "guilty_prompt": "If the defendant murdered the victim, how likely is it that they would have been seen arguing beforehand?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that he would have had an argument with someone who was later murdered?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.7,
+        "prob_innocent": 0.2,
+        "explanation": "Most murderers have prior conflict with victims, but many people argue in bars without committing violence later."
+      }
+    },
+    {
+      "name": "Gang Member Statement",
+      "summary": "A Steel Vultures member, under immunity, claims the gang wasn't involved and points to the defendant.",
+      "description": "A member of the Steel Vultures, under immunity, claims the gang was not involved and points to the defendant.",
+      "guidance": {
+        "guilty_prompt": "If the defendant is guilty, how likely is it that a gang member would truthfully point to him to deflect attention from the gang?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that a gang member would falsely implicate him to protect someone in the gang?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.6,
+        "prob_innocent": 0.3,
+        "explanation": "If the defendant is guilty, a gang member might tell the truth to avoid gang trouble. If innocent, a gang member might lie to protect their own."
+      }
+    },
+    {
+      "name": "Security Camera Gap",
+      "summary": "Defendant absent from camera footage for 5 minutes during the estimated time of murder.",
+      "description": "The defendant was absent from security camera footage for 5 minutes during the estimated time of murder.",
+      "guidance": {
+        "guilty_prompt": "If the defendant committed the murder, how likely is it that he would be absent from camera view during the crime?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that he would have left the camera's view for a benign reason (bathroom, phone call) at that time?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.8,
+        "prob_innocent": 0.4,
+        "explanation": "A murderer would need to be absent from cameras during the crime. Many innocent people also temporarily leave camera view for benign reasons."
+      }
+    },
+    {
+      "name": "Lime Cutting Alibi",
+      "summary": "Bartender confirms the defendant helped cut limes earlier, but isn't sure about which knife.",
+      "description": "The bartender confirms the defendant did help cut limes earlier, but isn't certain about the specific knife used.",
+      "guidance": {
+        "guilty_prompt": "If the defendant is the killer, how likely is it that there would be a partial alibi for why his prints are on the knife?",
+        "innocent_prompt": "If the defendant is innocent and truly cut limes, how likely is it that the bartender would confirm this?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.5,
+        "prob_innocent": 0.9,
+        "explanation": "An innocent person who handled the knife for lime cutting would have this confirmation. A guilty person might have also handled the knife earlier, creating a preemptive alibi."
+      }
+    }
+  ],
+  "context_sections": [
+    {
+      "title": "Biker Gang Context",
+      "content": "The Steel Vultures are known for violence, territorial disputes, and intimidation. Their presence creates alternative suspects and potential witness intimidation factors."
+    }
+  ]
+}

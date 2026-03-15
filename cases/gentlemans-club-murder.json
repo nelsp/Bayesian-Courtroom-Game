@@ -1,0 +1,103 @@
+{
+  "meta": {
+    "version": "1.0",
+    "author": "Original prototype",
+    "created": "2025-01-01",
+    "difficulty": "intermediate",
+    "estimated_minutes": 10,
+    "tags": ["murder", "DNA", "financial-motive"]
+  },
+  "case": {
+    "name": "The Diamond Lounge Murder",
+    "image": "gentlemans-club-murder.jpg",
+    "summary": "A high-end escort strangled in a VIP room — the last client seen leaving is charged.",
+    "description": "High-end escort Sophia Vega was found strangled in a private VIP room at The Diamond Lounge, an exclusive gentleman's club. The club had 40 people present that night: 15 escorts, 20 clients, and 5 staff members. The defendant is a wealthy regular client who was seen arguing with the victim earlier that evening.",
+    "details": "The victim was discovered by cleaning staff after hours. Security camera footage shows the victim entering the VIP room with the defendant at 11:30 PM, and the defendant leaving alone at 12:15 AM. The defendant claims he left the victim alive and well after their scheduled time together. The cause of death was manual strangulation, and time of death is estimated between 12:00-12:30 AM.",
+    "population": 40,
+    "setting": "The Diamond Lounge — Exclusive gentleman's club, late evening"
+  },
+  "prior": {
+    "db": -13,
+    "odds_description": "1 in 20",
+    "odds_numeric": 0.05,
+    "reasoning": "Initially, assuming any of the 20 clients could be guilty, the prior probability is 1/20."
+  },
+  "evidence": [
+    {
+      "name": "Security Footage Timeline",
+      "summary": "Defendant was the last person seen with the victim alive, leaving the VIP room within the time-of-death window.",
+      "description": "Security cameras show the defendant was the last person to see the victim alive, leaving the VIP room at 12:15 AM, within the estimated time of death window.",
+      "guidance": {
+        "guilty_prompt": "If the defendant strangled the victim, how likely is it that security cameras would show him as the last person with her?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that he would coincidentally be the last person captured on camera with the victim?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.95,
+        "prob_innocent": 0.35,
+        "explanation": "If guilty, the defendant would necessarily be with the victim during the time of death. If innocent, being the last known person to see the victim alive is circumstantial but concerning."
+      }
+    },
+    {
+      "name": "DNA Evidence",
+      "summary": "Defendant's skin cells found under the victim's fingernails, suggesting a struggle.",
+      "description": "The defendant's skin cells were found under the victim's fingernails, suggesting a struggle.",
+      "guidance": {
+        "guilty_prompt": "If the defendant strangled the victim, how likely is it that his skin cells would be found under her fingernails from defensive scratching?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that his DNA would end up under her fingernails from consensual contact?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.90,
+        "prob_innocent": 0.20,
+        "explanation": "Defensive wounds would likely transfer the attacker's DNA under the victim's nails. Some DNA transfer could occur during consensual intimate contact, but typically not under fingernails in significant amounts."
+      }
+    },
+    {
+      "name": "Financial Dispute",
+      "summary": "Victim was blackmailing the defendant over an embezzlement scheme.",
+      "description": "Financial records and text messages reveal the victim was threatening to expose the defendant's embezzlement scheme unless paid $100,000 for silence.",
+      "guidance": {
+        "guilty_prompt": "If the defendant killed the victim to silence her, how likely is it that there would be evidence of a financial dispute as motive?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that someone being blackmailed would choose a non-violent resolution?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.85,
+        "prob_innocent": 0.10,
+        "explanation": "This provides a strong motive for murder. While the blackmail threat existed, many people seek non-violent solutions to such problems."
+      }
+    },
+    {
+      "name": "Bruising Pattern Analysis",
+      "summary": "Forensic analysis indicates the attacker was left-handed — the defendant is left-handed.",
+      "description": "Forensic analysis of bruising on the victim's neck indicates the attacker was left-handed. The defendant is left-handed.",
+      "guidance": {
+        "guilty_prompt": "If the defendant strangled the victim, how likely is it that the bruising pattern would match his left-handedness?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that the real attacker would also be left-handed, matching the defendant by coincidence?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.70,
+        "prob_innocent": 0.25,
+        "explanation": "Left-handedness occurs in approximately 10% of the population. The bruising pattern is not 100% conclusive about handedness."
+      }
+    },
+    {
+      "name": "Witness Statement",
+      "summary": "Bartender overheard the defendant threaten the victim: 'You'll regret this, I promise.'",
+      "description": "A club bartender overheard the defendant tell the victim, 'You'll regret this, I promise' during their earlier argument.",
+      "guidance": {
+        "guilty_prompt": "If the defendant later killed the victim, how likely is it that he would have made a threatening statement beforehand?",
+        "innocent_prompt": "If the defendant is innocent, how likely is it that someone would make a threatening statement during an argument without following through?"
+      },
+      "reference_probabilities": {
+        "prob_guilty": 0.65,
+        "prob_innocent": 0.30,
+        "explanation": "Threatening statements often precede violence if the person is guilty. However, such statements are often hyperbolic expressions of anger that don't lead to violence."
+      }
+    }
+  ],
+  "context_sections": [
+    {
+      "title": "Club Context",
+      "content": "The Diamond Lounge caters to wealthy businessmen, politicians, and celebrities. Discreet but thorough security exists, with gaps in camera coverage in VIP rooms for privacy. The exclusive nature creates a complex environment where reputation and discretion are paramount, potentially affecting witness reliability."
+    }
+  ]
+}

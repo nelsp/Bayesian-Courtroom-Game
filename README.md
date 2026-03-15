@@ -1,139 +1,89 @@
-# Bayesian Jurisprudence: The Courtroom Game
+# Bayesian Courtroom Game
 
-A multi-player web-based game that simulates jury deliberation using Bayesian probability theory. Players analyze evidence and reach verdicts based on probability calculations.
+A mobile-first web application that teaches Bayesian reasoning through criminal cases. Players act as jurors, evaluating evidence and updating their beliefs using the decibel (dB) framework for probability.
 
-## Features
+## Quick Start
 
-### 🎮 Multi-Player Game
-- Real-time web interface using Flask and Socket.IO
-- Multiple players can join and participate simultaneously
-- Live updates of game state and player responses
+```bash
+pip install -r requirements.txt
+cd server
+python app.py
+```
 
-### 📊 Bayesian Probability System
-- Evidence evaluation using probability theory
-- Decibel-based evidence strength calculations
-- Individual guilt thresholds for each player
-- Group verdict calculation based on collective evidence
+Open `http://localhost:5000` on your phone or browser.
 
-### 🧠 Philosophical Quiz
-- 24-dimensional personality assessment
-- 1-10 rating scale for nuanced responses
-- Radar chart visualization of philosophical leanings
-- Covers dimensions like Rationality, Mysticism, Individualism, Collectivism, etc.
+## How It Works
+
+1. **Choose a case** from the selection screen
+2. **Set your conviction standard** (how certain you need to be to convict)
+3. **Read the case narrative** and understand the prior probability
+4. **Preview all evidence** items before evaluation
+5. **Evaluate each piece of evidence** by estimating:
+   - P(evidence | guilty) — how likely is this evidence if the defendant is guilty?
+   - P(evidence | innocent) — how likely if they're innocent?
+6. **See the verdict** based on your cumulative assessment
+
+Evidence strength is measured in **decibels (dB)**, a logarithmic scale that makes it easy to accumulate evidence. Positive dB = evidence toward guilt; negative dB = evidence toward innocence.
 
 ## Project Structure
 
 ```
-├── bayesian-court-game/          # Flask web application
-│   ├── flask_app.py             # Main Flask server
-│   ├── bayesian_core.py         # Core game logic
-│   ├── templates/               # HTML templates
-│   │   ├── index.html          # Main game interface
-│   │   └── admin.html          # Admin panel
-│   ├── case_files/             # JSON case files
-│   └── game_results/           # Saved game results
-├── bayesian_core.py            # Core Bayesian logic (standalone)
-├── test_bayesian_core.py       # Unit tests
-├── phil_quiz.py                # Philosophical assessment tool
-├── guilt_or_innocence_game.py  # Original single-player version
-└── README.md                   # This file
+├── server/
+│   ├── app.py              # Flask server and REST API
+│   ├── game_engine.py       # Core Bayesian game logic
+│   ├── case_manager.py      # Case file loading and validation
+│   └── ai_player.py         # AI player adapter
+├── frontend/
+│   ├── index.html           # Single-page app (all 7 screens)
+│   ├── css/game.css         # Mobile-first responsive styles
+│   └── js/
+│       ├── app.js           # Screen navigation, API calls
+│       ├── evidence-input.js # Slider and probability controls
+│       └── visualizations.js # Probability meter, dB calculations
+├── cases/
+│   ├── schema.json          # JSON Schema for case validation
+│   └── *.json               # 6 case files
+├── tests/
+│   ├── test_game_engine.py  # Engine unit tests
+│   ├── test_case_manager.py # Case loading/validation tests
+│   └── test_api.py          # API integration tests
+├── results/                 # Saved game results (gitignored)
+└── docs/
+    ├── case-authoring-guide.md
+    └── ai-integration-guide.md
 ```
 
-## Getting Started
+## Cases
 
-### Prerequisites
-- Python 3.7+
-- Flask
-- Flask-SocketIO
-- matplotlib (for phil_quiz.py)
+| Case | Difficulty | Evidence Items | Description |
+|------|-----------|---------------|-------------|
+| The Riverside Robbery | Beginner | 7 | Convenience store robbery with eyewitness testimony |
+| The Stolen Intimate Photos | Beginner | 5 | Photo theft with multiple suspects and digital clues |
+| The Roadhouse Murder | Intermediate | 6 | Biker bar murder with forensic evidence |
+| The Diamond Lounge Murder | Intermediate | 5 | VIP room strangulation with DNA and motive |
+| The Riverside Manor Murder | Advanced | 7 | Novelist poisoned at a literary gala |
+| The Diamond District Heist | Advanced | 5 | $2M diamond heist by a security expert |
 
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/nelsp/BAYESIAN-JURISPRUDENCE-THE-COURTROOM-GAME-.git
-   cd BAYESIAN-JURISPRUDENCE-THE-COURTROOM-GAME-
-   ```
+## AI Player Integration
 
-2. Install dependencies:
-   ```bash
-   pip install flask flask-socketio matplotlib numpy
-   ```
+Any AI model that can make HTTP requests can play through the same API the browser uses:
 
-### Running the Web Game
-1. Navigate to the Flask app directory:
-   ```bash
-   cd bayesian-court-game
-   ```
+```python
+from ai_player import AIPlayer
 
-2. Start the server:
-   ```bash
-   python flask_app.py
-   ```
+player = AIPlayer("claude-sonnet", "your-api-key")
+player.set_model_callable(your_model_function)
+results = player.play_case("riverside-robbery")
+```
 
-3. Open your browser to `http://localhost:5000`
+See `docs/ai-integration-guide.md` for details.
 
-### Running the Philosophical Quiz
+## Testing
+
 ```bash
-python phil_quiz.py
+python -m pytest tests/ -v
 ```
 
-### Running Tests
-```bash
-python test_bayesian_core.py
-```
+## Adding New Cases
 
-## How to Play
-
-### Web Game
-1. **Create a Game**: Select a case file and set maximum players
-2. **Join as Player**: Enter your name and guilt tolerance settings
-3. **Start Game**: Click "Start Game" when ready
-4. **Review Case**: Read the case information
-5. **Evaluate Evidence**: Rate each piece of evidence on probability scales
-6. **Reach Verdict**: See the group's final decision
-
-### Philosophical Quiz
-1. Answer questions on a 1-10 scale
-2. Questions cover 24 different philosophical dimensions
-3. View your results as a radar chart
-4. Compare your philosophical leanings across dimensions
-
-## Case Files
-
-The game includes several pre-built case files:
-- **Biker Bar Murder Case**: Complex murder investigation
-- **Gentleman's Club Murder Case**: High-profile case
-- **Jewelry Heist Case**: Property crime investigation
-- **Manor Murder Case**: Classic whodunit scenario
-- **Stolen Photos Case**: Digital evidence case
-
-## Technical Details
-
-### Bayesian Calculations
-- Evidence strength measured in decibels
-- Prior probability based on population statistics
-- Likelihood ratios for evidence evaluation
-- Posterior probability updates after each piece of evidence
-
-### Web Technologies
-- **Backend**: Flask with Socket.IO for real-time communication
-- **Frontend**: HTML5, CSS3, JavaScript with Socket.IO client
-- **Data**: JSON case files and game state management
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-This project is open source and available under the MIT License.
-
-## Acknowledgments
-
-- Based on Bayesian probability theory and jury deliberation research
-- Inspired by educational games that teach statistical reasoning
-- Built for educational and research purposes
+See `docs/case-authoring-guide.md` for the case file format and writing guidelines.

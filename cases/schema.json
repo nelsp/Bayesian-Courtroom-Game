@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Bayesian Courtroom Case File",
+  "description": "Schema for case files used in the Bayesian Courtroom Game",
+  "type": "object",
+  "required": ["meta", "case", "prior", "evidence"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["version", "difficulty"],
+      "properties": {
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
+        "author": { "type": "string" },
+        "created": { "type": "string" },
+        "difficulty": { "type": "string", "enum": ["beginner", "intermediate", "advanced"] },
+        "estimated_minutes": { "type": "integer", "minimum": 1 },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "case": {
+      "type": "object",
+      "required": ["name", "summary", "description"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "image": { "type": "string" },
+        "summary": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "details": { "type": "string" },
+        "population": { "type": "integer", "minimum": 1 },
+        "setting": { "type": "string" }
+      }
+    },
+    "prior": {
+      "type": "object",
+      "required": ["db", "odds_description", "odds_numeric"],
+      "properties": {
+        "db": { "type": "number" },
+        "odds_description": { "type": "string" },
+        "odds_numeric": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 },
+        "reasoning": { "type": "string" }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "summary", "description", "guidance"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "summary": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "guidance": {
+            "type": "object",
+            "required": ["guilty_prompt", "innocent_prompt"],
+            "properties": {
+              "guilty_prompt": { "type": "string", "minLength": 1 },
+              "innocent_prompt": { "type": "string", "minLength": 1 }
+            }
+          },
+          "reference_probabilities": {
+            "type": "object",
+            "properties": {
+              "prob_guilty": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_innocent": { "type": "number", "minimum": 0, "maximum": 1 },
+              "explanation": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "context_sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "content"],
+        "properties": {
+          "title": { "type": "string" },
+          "content": { "type": "string" }
+        }
+      }
+    }
+  }
+}
