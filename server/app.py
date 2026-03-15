@@ -1,16 +1,19 @@
 """
-Flask app — routes, REST API, serves the single-page frontend.
+Flask app — routes, REST API, Socket.IO for multiplayer, serves the single-page frontend.
 """
 
 import os
 import sys
 import uuid
 import json
+import random
+import string
 import logging
 from datetime import datetime
 from typing import Dict, Optional
 
-from flask import Flask, request, jsonify, send_from_directory, send_file
+from flask import Flask, request, jsonify, send_from_directory, send_file, session
+from flask_socketio import SocketIO, emit, join_room, leave_room
 
 from game_engine import BayesianGame, BayesianCalculator, GamePhase, CaseData
 from case_manager import CaseManager
@@ -26,8 +29,19 @@ FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "bayesian-courtroom-dev-key")
 
+socketio = SocketIO(app, cors_allowed_origins="*")
+
 case_manager = CaseManager(CASES_DIR)
 active_games: Dict[str, BayesianGame] = {}
+join_codes: Dict[str, str] = {}  # join_code -> game_id
+player_rooms: Dict[str, str] = {}  # sid -> game_id
+
+
+def _generate_join_code() -> str:
+    while True:
+        code = ''.join(random.choices(string.ascii_uppercase, k=4))
+        if code not in join_codes:
+            return code
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +74,7 @@ def serve_case_images(filename):
 
 
 # ---------------------------------------------------------------------------
-# REST API — Cases
+# REST API — Cases (unchanged)
 # ---------------------------------------------------------------------------
 
 @app.route("/api/cases", methods=["GET"])
@@ -81,7 +95,7 @@ def get_case(slug):
 
 
 # ---------------------------------------------------------------------------
-# REST API — Games
+# REST API — Games (kept for AI player / single-player compatibility)
 # ---------------------------------------------------------------------------
 
 @app.route("/api/games", methods=["POST"])
@@ -132,6 +146,9 @@ def register_player(game_id):
     )
     if not ok:
         return jsonify({"success": False, "error": "Could not add player"}), 400
+
+    if game.host_player_id is None:
+        game.host_player_id = player_id
 
     game.start_game()
 
@@ -246,6 +263,19 @@ def get_verdict(game_id):
         "reference_evidence": ref_details,
     }
 
+    # Per-player verdicts for jury table
+    player_verdicts = []
+    for pid, player in game.players.items():
+        player_verdicts.append({
+            "player_id": pid,
+            "name": player.name,
+            "final_db": player.current_evidence_db,
+            "final_probability": player.get_current_guilt_probability(),
+            "threshold_db": player.guilt_threshold_db,
+            "would_convict": player.would_convict(),
+        })
+    state["verdict"]["player_verdicts"] = player_verdicts
+
     game.save_game_results(RESULTS_DIR)
     game.phase = GamePhase.COMPLETED
 
@@ -265,14 +295,250 @@ def submit_feedback(game_id):
 
 
 # ---------------------------------------------------------------------------
+# Socket.IO — Multiplayer events
+# ---------------------------------------------------------------------------
+
+@socketio.on("connect")
+def handle_connect():
+    sid = request.sid
+    logger.info("Socket connected: %s", sid)
+    emit("connected", {"sid": sid})
+
+
+@socketio.on("disconnect")
+def handle_disconnect():
+    sid = request.sid
+    game_id = player_rooms.pop(sid, None)
+    if game_id:
+        game = active_games.get(game_id)
+        if game and sid in game.players:
+            game.set_player_connection_status(sid, False)
+            emit("player_left", {
+                "player_id": sid,
+                "player_name": game.players[sid].name,
+                "game_state": game.get_game_state(),
+            }, room=game_id)
+    logger.info("Socket disconnected: %s", sid)
+
+
+@socketio.on("create_room")
+def handle_create_room(data):
+    sid = request.sid
+    case_slug = data.get("case_slug")
+    player_name = data.get("name", "Host")
+    guilt_tolerance = data.get("guilt_tolerance", 100)
+    use_rating_scale = data.get("use_rating_scale", True)
+
+    if not case_slug:
+        emit("error", {"message": "case_slug is required"})
+        return
+
+    try:
+        case_data_obj = case_manager.load_case_data(case_slug)
+    except (FileNotFoundError, ValueError) as e:
+        emit("error", {"message": str(e)})
+        return
+
+    game_id = f"game_{uuid.uuid4().hex[:8]}"
+    game = BayesianGame(case_data_obj, game_id)
+    active_games[game_id] = game
+
+    code = _generate_join_code()
+    join_codes[code] = game_id
+
+    game.add_player(sid, player_name, guilt_tolerance, use_rating_scale)
+    game.host_player_id = sid
+    player_rooms[sid] = game_id
+
+    join_room(game_id)
+
+    logger.info("Room created: %s (code=%s) by %s", game_id, code, player_name)
+    emit("room_created", {
+        "game_id": game_id,
+        "join_code": code,
+        "player_id": sid,
+        "game_state": game.get_game_state(),
+    })
+
+
+@socketio.on("join_room_by_code")
+def handle_join_room(data):
+    sid = request.sid
+    code = (data.get("join_code") or "").upper().strip()
+    player_name = data.get("name", "Juror")
+    guilt_tolerance = data.get("guilt_tolerance", 100)
+    use_rating_scale = data.get("use_rating_scale", True)
+
+    game_id = join_codes.get(code)
+    if not game_id:
+        emit("error", {"message": "Invalid room code"})
+        return
+
+    game = active_games.get(game_id)
+    if not game:
+        emit("error", {"message": "Game not found"})
+        return
+
+    if game.phase != GamePhase.SETUP:
+        emit("error", {"message": "Game already started"})
+        return
+
+    ok = game.add_player(sid, player_name, guilt_tolerance, use_rating_scale)
+    if not ok:
+        emit("error", {"message": "Could not join (game full or already joined)"})
+        return
+
+    player_rooms[sid] = game_id
+    join_room(game_id)
+
+    state = game.get_game_state()
+    logger.info("Player %s joined room %s (code=%s)", player_name, game_id, code)
+
+    emit("join_success", {
+        "game_id": game_id,
+        "join_code": code,
+        "player_id": sid,
+        "game_state": state,
+    })
+
+    emit("player_joined", {
+        "player_id": sid,
+        "player_name": player_name,
+        "game_state": state,
+    }, room=game_id, include_self=False)
+
+
+@socketio.on("start_game")
+def handle_start_game(data):
+    sid = request.sid
+    game_id = data.get("game_id")
+    game = active_games.get(game_id)
+
+    if not game:
+        emit("error", {"message": "Game not found"})
+        return
+    if not game.is_host(sid):
+        emit("error", {"message": "Only the host can start the game"})
+        return
+
+    if game.start_game():
+        state = game.get_game_state()
+        socketio.emit("game_started", {"game_state": state}, room=game_id)
+        logger.info("Game %s started by host", game_id)
+    else:
+        emit("error", {"message": "Cannot start game"})
+
+
+@socketio.on("advance_phase")
+def handle_advance_phase(data):
+    sid = request.sid
+    game_id = data.get("game_id")
+    game = active_games.get(game_id)
+
+    if not game:
+        emit("error", {"message": "Game not found"})
+        return
+    if not game.is_host(sid):
+        emit("error", {"message": "Only the host can advance phases"})
+        return
+
+    if game.phase == GamePhase.CASE_PRESENTATION:
+        game.advance_to_evidence_preview()
+        socketio.emit("phase_advanced", {"game_state": game.get_game_state()}, room=game_id)
+    elif game.phase == GamePhase.EVIDENCE_PREVIEW:
+        game.advance_to_evidence_review()
+        socketio.emit("phase_advanced", {"game_state": game.get_game_state()}, room=game_id)
+
+
+@socketio.on("submit_evidence")
+def handle_submit_evidence(data):
+    sid = request.sid
+    game_id = data.get("game_id")
+    game = active_games.get(game_id)
+
+    if not game:
+        emit("error", {"message": "Game not found"})
+        return
+
+    prob_guilty = data.get("prob_guilty")
+    prob_innocent = data.get("prob_innocent")
+    guilty_rating = data.get("guilty_rating")
+    innocent_rating = data.get("innocent_rating")
+
+    ok = game.submit_evidence_response(
+        sid, prob_guilty, prob_innocent,
+        guilty_rating=guilty_rating,
+        innocent_rating=innocent_rating,
+    )
+    if not ok:
+        emit("error", {"message": "Could not submit response"})
+        return
+
+    socketio.emit("player_submitted", {
+        "player_id": sid,
+        "player_name": game.players[sid].name,
+        "responses_received": len(game.responses_for_current_evidence),
+        "total_players": len([p for p in game.players.values() if p.is_connected]),
+    }, room=game_id)
+
+    if game.all_players_responded():
+        has_more = game.advance_evidence()
+        state = game.get_game_state()
+        if has_more:
+            socketio.emit("evidence_advanced", {
+                "game_state": state,
+                "next_evidence_index": game.current_evidence_index,
+            }, room=game_id)
+        else:
+            socketio.emit("verdict_ready", {
+                "game_state": state,
+            }, room=game_id)
+
+
+@socketio.on("request_state")
+def handle_request_state(data):
+    sid = request.sid
+    game_id = data.get("game_id")
+    player_id = data.get("player_id")
+    game = active_games.get(game_id)
+
+    if not game:
+        emit("error", {"message": "Game not found"})
+        return
+
+    if player_id and player_id in game.players:
+        game.set_player_connection_status(player_id, True)
+        player_rooms[sid] = game_id
+        join_room(game_id)
+
+        emit("state_restored", {
+            "game_id": game_id,
+            "player_id": player_id,
+            "game_state": game.get_game_state(),
+            "player_state": game.get_player_state(player_id),
+        })
+
+        emit("player_joined", {
+            "player_id": player_id,
+            "player_name": game.players[player_id].name,
+            "game_state": game.get_game_state(),
+        }, room=game_id, include_self=False)
+    else:
+        emit("state_restored", {
+            "game_id": game_id,
+            "game_state": game.get_game_state(),
+        })
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     os.makedirs(RESULTS_DIR, exist_ok=True)
-    print("Bayesian Courtroom Game Server")
+    print("Bayesian Courtroom Game Server (Multiplayer)")
     print(f"  Cases dir:    {CASES_DIR}")
     print(f"  Frontend dir: {FRONTEND_DIR}")
     print(f"  Results dir:  {RESULTS_DIR}")
     print("  http://localhost:5000")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True, allow_unsafe_werkzeug=True)

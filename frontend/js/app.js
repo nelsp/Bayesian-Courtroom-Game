@@ -1,5 +1,6 @@
 /**
- * Main application — screen navigation, API interaction, game state.
+ * Main application — screen navigation, API interaction, game state,
+ * multiplayer Socket.IO, sidebar, lobby, reconnection.
  */
 const App = {
 
@@ -17,6 +18,15 @@ const App = {
   inputMethod: 'slider',
   responses: [],
 
+  // Multiplayer state
+  isMultiplayer: false,
+  isHost: false,
+  joinCode: null,
+  socket: null,
+  players: {},
+  sidebarOpen: false,
+  hasSubmittedCurrentEvidence: false,
+
   // ---- Screen Navigation ----
 
   showScreen(name) {
@@ -24,15 +34,20 @@ const App = {
     const target = document.getElementById('screen-' + name);
     if (!target) return;
 
-    screens.forEach(s => {
-      if (s.classList.contains('active')) {
-        s.classList.remove('active');
-      }
-    });
-
+    screens.forEach(s => s.classList.remove('active'));
     target.classList.add('active');
 
     if (name === 'case-select') this.loadCases();
+
+    const gameScreens = ['case-presentation', 'evidence-preview', 'evidence-eval', 'verdict'];
+    const sidebar = document.getElementById('player-sidebar');
+    if (this.isMultiplayer && gameScreens.includes(name)) {
+      sidebar.classList.remove('hidden');
+    } else {
+      sidebar.classList.add('hidden');
+    }
+
+    this._updateHostControls();
     window.scrollTo(0, 0);
   },
 
@@ -100,6 +115,8 @@ const App = {
       btn.classList.toggle('selected', parseInt(btn.dataset.tolerance) === tolerance);
     });
     document.getElementById('threshold-db').textContent = this.thresholdDb.toFixed(1) + ' dB';
+    const joinDbEl = document.getElementById('join-threshold-db');
+    if (joinDbEl) joinDbEl.textContent = this.thresholdDb.toFixed(1) + ' dB';
   },
 
   setInputMethod(method) {
@@ -109,10 +126,42 @@ const App = {
     });
   },
 
-  // ---- Start Case ----
+  // ---- Join Game (guest flow) ----
+
+  showJoinInput() {
+    document.getElementById('join-input-area').classList.remove('hidden');
+    document.getElementById('join-btn').style.display = 'none';
+    document.getElementById('join-code-input').focus();
+  },
+
+  joinGameByCode() {
+    const code = (document.getElementById('join-code-input').value || '').toUpperCase().trim();
+    const name = (document.getElementById('join-name-input').value || '').trim() || 'Juror';
+
+    if (code.length !== 4) {
+      alert('Enter a 4-letter room code');
+      return;
+    }
+
+    this.isMultiplayer = true;
+    this.isHost = false;
+
+    this._connectSocket(() => {
+      this.socket.emit('join_room_by_code', {
+        join_code: code,
+        name: name,
+        guilt_tolerance: this.tolerance,
+        use_rating_scale: this.inputMethod === 'slider',
+      });
+    });
+  },
+
+  // ---- Start Case (solo) ----
 
   async startCase() {
-    // Create game
+    this.isMultiplayer = false;
+    this.isHost = false;
+
     let data = await this.api('/games', {
       method: 'POST',
       body: JSON.stringify({ case_slug: this.caseSlug })
@@ -120,11 +169,11 @@ const App = {
     if (!data.success) { alert('Failed to create game: ' + data.error); return; }
     this.gameId = data.game_id;
 
-    // Register player
+    const hostName = (document.getElementById('host-name').value || '').trim() || 'Player';
     data = await this.api(`/games/${this.gameId}/player`, {
       method: 'POST',
       body: JSON.stringify({
-        name: 'Player',
+        name: hostName,
         guilt_tolerance: this.tolerance,
         use_rating_scale: this.inputMethod === 'slider'
       })
@@ -132,7 +181,6 @@ const App = {
     if (!data.success) { alert('Failed to register player'); return; }
     this.playerId = data.player_id;
 
-    // Get case data
     const caseRes = await this.api(`/games/${this.gameId}/case`);
     this.caseData = caseRes;
     this.priorDb = caseRes.prior_info.db;
@@ -140,13 +188,137 @@ const App = {
     this.responses = [];
     this.currentEvidenceIdx = 0;
 
-    // Get evidence list
     const evRes = await this.api(`/games/${this.gameId}/evidence`);
     this.evidenceList = evRes.evidence;
 
     this.renderCasePresentation();
     this.showScreen('case-presentation');
   },
+
+  // ---- Create Multiplayer Room (host flow) ----
+
+  createMultiplayerRoom() {
+    this.isMultiplayer = true;
+    this.isHost = true;
+
+    const hostName = (document.getElementById('host-name').value || '').trim() || 'Host';
+
+    this._connectSocket(() => {
+      this.socket.emit('create_room', {
+        case_slug: this.caseSlug,
+        name: hostName,
+        guilt_tolerance: this.tolerance,
+        use_rating_scale: this.inputMethod === 'slider',
+      });
+    });
+  },
+
+  // ---- Lobby ----
+
+  _renderLobby(state, joinCode) {
+    this.joinCode = joinCode || this.joinCode;
+    document.getElementById('room-code-text').textContent = this.joinCode || '----';
+
+    this._updateLobbyPlayers(state);
+
+    const startBtn = document.getElementById('lobby-start-btn');
+    const waitingMsg = document.getElementById('lobby-waiting');
+    if (this.isHost) {
+      startBtn.style.display = '';
+      waitingMsg.style.display = 'none';
+    } else {
+      startBtn.style.display = 'none';
+      waitingMsg.style.display = '';
+    }
+
+    this.showScreen('lobby');
+  },
+
+  _updateLobbyPlayers(state) {
+    this.players = state.players || {};
+    const list = document.getElementById('lobby-player-list');
+    const count = Object.keys(this.players).length;
+    document.getElementById('lobby-player-count').textContent = `${count} of 12 jurors`;
+
+    list.innerHTML = Object.entries(this.players).map(([pid, p]) => {
+      const isHost = pid === state.host_player_id;
+      const isYou = pid === this.playerId;
+      return `<div class="lobby-player ${isYou ? 'you' : ''}">
+        <span class="lobby-player-name">${p.name}${isHost ? ' (Host)' : ''}${isYou ? ' (You)' : ''}</span>
+        <span class="lobby-player-status ${p.is_connected ? 'connected' : 'disconnected'}">
+          ${p.is_connected ? 'Connected' : 'Disconnected'}
+        </span>
+      </div>`;
+    }).join('');
+  },
+
+  copyRoomCode() {
+    if (this.joinCode) {
+      navigator.clipboard.writeText(this.joinCode).catch(() => {});
+      const el = document.getElementById('room-code-display');
+      el.classList.add('copied');
+      setTimeout(() => el.classList.remove('copied'), 1200);
+    }
+  },
+
+  hostStartGame() {
+    if (!this.socket || !this.isHost) return;
+    this.socket.emit('start_game', { game_id: this.gameId });
+  },
+
+  leaveLobby() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+    this.isMultiplayer = false;
+    this.isHost = false;
+    this.gameId = null;
+    this.playerId = null;
+    this.joinCode = null;
+    this.showScreen('welcome');
+  },
+
+  // ---- Case Presentation / Evidence Preview (multiplayer phase advances) ----
+
+  advanceToEvidencePreview() {
+    if (this.isMultiplayer) {
+      if (!this.isHost) return;
+      this.socket.emit('advance_phase', { game_id: this.gameId });
+    } else {
+      this.showScreen('evidence-preview');
+    }
+  },
+
+  async beginEvaluation() {
+    if (this.isMultiplayer) {
+      if (!this.isHost) return;
+      this.socket.emit('advance_phase', { game_id: this.gameId });
+    } else {
+      this.currentEvidenceIdx = 0;
+      await this.loadEvidence(0);
+      this.showScreen('evidence-eval');
+    }
+  },
+
+  // ---- Host Control Visibility ----
+
+  _updateHostControls() {
+    if (!this.isMultiplayer) {
+      document.querySelectorAll('.host-control').forEach(el => el.classList.remove('hidden'));
+      document.querySelectorAll('.host-waiting-msg').forEach(el => el.classList.add('hidden'));
+      return;
+    }
+
+    document.querySelectorAll('.host-control').forEach(el => {
+      el.classList.toggle('hidden', !this.isHost);
+    });
+    document.querySelectorAll('.host-waiting-msg').forEach(el => {
+      el.classList.toggle('hidden', this.isHost);
+    });
+  },
+
+  // ---- Rendering ----
 
   renderCasePresentation() {
     const ci = this.caseData.case_info;
@@ -198,18 +370,13 @@ const App = {
 
   // ---- Evidence Evaluation ----
 
-  async beginEvaluation() {
-    this.currentEvidenceIdx = 0;
-    await this.loadEvidence(0);
-    this.showScreen('evidence-eval');
-  },
-
   async loadEvidence(idx) {
     const data = await this.api(`/games/${this.gameId}/evidence/${idx}`);
     if (!data.success) return;
 
     const ev = data.evidence;
     this.currentEvidenceIdx = idx;
+    this.hasSubmittedCurrentEvidence = false;
 
     const total = this.evidenceList.length;
     const pct = ((idx + 1) / total) * 100;
@@ -220,18 +387,15 @@ const App = {
     document.getElementById('evidence-title').textContent = ev.name;
     document.getElementById('evidence-description-text').textContent = ev.description;
 
-    // Guidance prompts
     const guidance = ev.guidance || {};
     document.getElementById('guilty-prompt').textContent =
       guidance.guilty_prompt || 'How likely is this evidence if the defendant is GUILTY?';
     document.getElementById('innocent-prompt').textContent =
       guidance.innocent_prompt || 'How likely is this evidence if the defendant is INNOCENT?';
 
-    // Reset inputs
     EvidenceInput.init(this.inputMethod);
     EvidenceInput.reset();
 
-    // Update meter
     Viz.updateMeter('running-meter-fill', 'running-meter-threshold', 'running-meter-value',
       this.currentDb, this.thresholdDb);
 
@@ -259,37 +423,61 @@ const App = {
     const vals = EvidenceInput.getValues();
     const dbUpdate = Viz.calcDbUpdate(vals.prob_guilty, vals.prob_innocent);
 
-    const body = {
-      player_id: this.playerId,
-      prob_guilty: vals.prob_guilty,
-      prob_innocent: vals.prob_innocent,
-      guilty_rating: vals.guilty_rating,
-      innocent_rating: vals.innocent_rating
-    };
+    if (this.isMultiplayer && this.socket) {
+      this.socket.emit('submit_evidence', {
+        game_id: this.gameId,
+        prob_guilty: vals.prob_guilty,
+        prob_innocent: vals.prob_innocent,
+        guilty_rating: vals.guilty_rating,
+        innocent_rating: vals.innocent_rating,
+      });
 
-    const data = await this.api(`/games/${this.gameId}/evidence/${this.currentEvidenceIdx}`, {
-      method: 'POST',
-      body: JSON.stringify(body)
-    });
+      this.hasSubmittedCurrentEvidence = true;
+      this.currentDb += dbUpdate;
+      this.responses.push({
+        name: this.evidenceList[this.currentEvidenceIdx].name,
+        db_update: dbUpdate,
+        prob_guilty: vals.prob_guilty,
+        prob_innocent: vals.prob_innocent
+      });
 
-    if (!data.success) { alert('Error: ' + data.error); return; }
+      Viz.updateMeter('running-meter-fill', 'running-meter-threshold', 'running-meter-value',
+        this.currentDb, this.thresholdDb);
 
-    this.currentDb += dbUpdate;
-    this.responses.push({
-      name: this.evidenceList[this.currentEvidenceIdx].name,
-      db_update: dbUpdate,
-      prob_guilty: vals.prob_guilty,
-      prob_innocent: vals.prob_innocent
-    });
-
-    Viz.updateMeter('running-meter-fill', 'running-meter-threshold', 'running-meter-value',
-      this.currentDb, this.thresholdDb);
-
-    const nextIdx = this.currentEvidenceIdx + 1;
-    if (nextIdx < this.evidenceList.length) {
-      await this.loadEvidence(nextIdx);
+      this._showWaiting('Waiting for other jurors...');
     } else {
-      await this.showVerdict();
+      const body = {
+        player_id: this.playerId,
+        prob_guilty: vals.prob_guilty,
+        prob_innocent: vals.prob_innocent,
+        guilty_rating: vals.guilty_rating,
+        innocent_rating: vals.innocent_rating
+      };
+
+      const data = await this.api(`/games/${this.gameId}/evidence/${this.currentEvidenceIdx}`, {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+
+      if (!data.success) { alert('Error: ' + data.error); return; }
+
+      this.currentDb += dbUpdate;
+      this.responses.push({
+        name: this.evidenceList[this.currentEvidenceIdx].name,
+        db_update: dbUpdate,
+        prob_guilty: vals.prob_guilty,
+        prob_innocent: vals.prob_innocent
+      });
+
+      Viz.updateMeter('running-meter-fill', 'running-meter-threshold', 'running-meter-value',
+        this.currentDb, this.thresholdDb);
+
+      const nextIdx = this.currentEvidenceIdx + 1;
+      if (nextIdx < this.evidenceList.length) {
+        await this.loadEvidence(nextIdx);
+      } else {
+        await this.showVerdict();
+      }
     }
   },
 
@@ -297,9 +485,56 @@ const App = {
     if (this.currentEvidenceIdx === 0) {
       this.showScreen('evidence-preview');
     } else {
-      // Can't truly go back after submitting, but let them re-view the current evidence description
       window.scrollTo(0, 0);
     }
+  },
+
+  // ---- Waiting Overlay ----
+
+  _showWaiting(text, progress) {
+    document.getElementById('waiting-text').textContent = text || 'Waiting...';
+    document.getElementById('waiting-progress-text').textContent = progress || '';
+    document.getElementById('waiting-overlay').classList.remove('hidden');
+  },
+
+  _hideWaiting() {
+    document.getElementById('waiting-overlay').classList.add('hidden');
+  },
+
+  // ---- Player Sidebar ----
+
+  toggleSidebar() {
+    this.sidebarOpen = !this.sidebarOpen;
+    document.getElementById('sidebar-panel').classList.toggle('open', this.sidebarOpen);
+  },
+
+  _updateSidebar(state) {
+    if (!this.isMultiplayer) return;
+    const list = document.getElementById('sidebar-player-list');
+    const players = state.players || {};
+    const count = Object.keys(players).length;
+
+    document.getElementById('sidebar-badge').textContent = count;
+
+    const phase = state.phase;
+
+    list.innerHTML = Object.entries(players).map(([pid, p]) => {
+      let status = '';
+      if (phase === 'evidence_review') {
+        status = 'Evaluating...';
+      } else if (phase === 'verdict' || phase === 'completed') {
+        status = 'Done';
+      } else {
+        status = 'Reading...';
+      }
+      if (!p.is_connected) status = 'Disconnected';
+
+      const isYou = pid === this.playerId;
+      return `<div class="sidebar-player ${isYou ? 'you' : ''} ${p.is_connected ? '' : 'disconnected'}">
+        <span class="sp-name">${p.name}${isYou ? ' (You)' : ''}</span>
+        <span class="sp-status">${status}</span>
+      </div>`;
+    }).join('');
   },
 
   // ---- Verdict ----
@@ -310,7 +545,6 @@ const App = {
     document.getElementById('verdict-case-name').textContent =
       this.caseData.case_info.name;
 
-    // Evidence summary table
     const tableEl = document.getElementById('evidence-summary-table');
     tableEl.innerHTML = this.responses.map(r => {
       const cls = r.db_update >= 0 ? 'ev-db-positive' : 'ev-db-negative';
@@ -321,11 +555,9 @@ const App = {
       </div>`;
     }).join('');
 
-    // Final meter
     Viz.updateMeter('final-meter-fill', 'final-meter-threshold', 'final-meter-value',
       this.currentDb, this.thresholdDb);
 
-    // Verdict announcement
     const isGuilty = this.currentDb >= this.thresholdDb;
     const finalProb = Viz.dbToProb(this.currentDb) * 100;
     const ann = document.getElementById('verdict-announcement');
@@ -345,6 +577,9 @@ const App = {
         but your standard required ${this.thresholdDb.toFixed(1)} dB.
         You would need ${needed.toFixed(1)} more dB of evidence to convict.</p>`;
     }
+
+    // Jury Panel Results (multiplayer)
+    this._renderJuryTable(data);
 
     // Reference comparison
     const refEl = document.getElementById('reference-comparison');
@@ -375,7 +610,6 @@ const App = {
       refEl.innerHTML = '';
     }
 
-    // Detailed JSON
     document.getElementById('detailed-results-json').textContent =
       JSON.stringify({
         game_id: this.gameId,
@@ -391,13 +625,237 @@ const App = {
     this.showScreen('verdict');
   },
 
+  _renderJuryTable(data) {
+    const panel = document.getElementById('jury-panel-results');
+    const verdictData = data?.game_state?.verdict;
+    const playerVerdicts = verdictData?.player_verdicts;
+
+    if (!playerVerdicts || playerVerdicts.length <= 1) {
+      panel.classList.add('hidden');
+      return;
+    }
+
+    panel.classList.remove('hidden');
+    const tbody = document.getElementById('jury-table-body');
+    tbody.innerHTML = playerVerdicts.map(pv => {
+      const prob = pv.final_probability.toFixed(1);
+      const verdictText = pv.would_convict ? 'Guilty' : 'Not Guilty';
+      const verdictClass = pv.would_convict ? 'jv-guilty' : 'jv-not-guilty';
+      const isYou = pv.player_id === this.playerId;
+      return `<tr class="${isYou ? 'jury-row-you' : ''}">
+        <td>${pv.name}${isYou ? ' (You)' : ''}</td>
+        <td>${pv.final_db.toFixed(1)} dB</td>
+        <td>${prob}%</td>
+        <td class="${verdictClass}">${verdictText}</td>
+      </tr>`;
+    }).join('');
+
+    const stats = verdictData.statistics;
+    const banner = document.getElementById('group-verdict-banner');
+    const groupVerdict = verdictData.group_verdict;
+    if (groupVerdict === 'GUILTY') {
+      banner.className = 'group-verdict-banner gv-guilty';
+      banner.innerHTML = `<strong>GUILTY</strong> (Unanimous)`;
+    } else {
+      banner.className = 'group-verdict-banner gv-not-guilty';
+      banner.innerHTML = `<strong>NOT GUILTY</strong> — ${stats.guilty_votes} of ${stats.total_players} jurors would convict`;
+    }
+  },
+
   playAgain() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
     this.gameId = null;
     this.playerId = null;
     this.caseData = null;
     this.responses = [];
     this.currentDb = 0;
+    this.isMultiplayer = false;
+    this.isHost = false;
+    this.joinCode = null;
+    this.players = {};
+    sessionStorage.removeItem('bcg_gameId');
+    sessionStorage.removeItem('bcg_playerId');
     this.showScreen('case-select');
+  },
+
+  // ---- Socket.IO Connection ----
+
+  _connectSocket(onConnect) {
+    if (this.socket && this.socket.connected) {
+      onConnect();
+      return;
+    }
+
+    this.socket = io({ transports: ['websocket', 'polling'] });
+
+    this.socket.on('connect', () => {
+      if (onConnect) onConnect();
+    });
+
+    this.socket.on('error', (data) => {
+      alert(data.message || 'Socket error');
+    });
+
+    // Room created (host)
+    this.socket.on('room_created', (data) => {
+      this.gameId = data.game_id;
+      this.playerId = data.player_id;
+      this.joinCode = data.join_code;
+      this._saveSession();
+      this._renderLobby(data.game_state, data.join_code);
+    });
+
+    // Join success (guest)
+    this.socket.on('join_success', (data) => {
+      this.gameId = data.game_id;
+      this.playerId = data.player_id;
+      this.joinCode = data.join_code;
+      this._saveSession();
+      this._renderLobby(data.game_state, data.join_code);
+    });
+
+    this.socket.on('player_joined', (data) => {
+      this._updateLobbyPlayers(data.game_state);
+      if (this.isMultiplayer) this._updateSidebar(data.game_state);
+    });
+
+    this.socket.on('player_left', (data) => {
+      this._updateLobbyPlayers(data.game_state);
+      if (this.isMultiplayer) this._updateSidebar(data.game_state);
+    });
+
+    this.socket.on('game_started', async (data) => {
+      const state = data.game_state;
+      const caseRes = await this.api(`/games/${this.gameId}/case`);
+      this.caseData = caseRes;
+      this.priorDb = caseRes.prior_info.db;
+      this.currentDb = caseRes.prior_info.db;
+      this.responses = [];
+      this.currentEvidenceIdx = 0;
+
+      const evRes = await this.api(`/games/${this.gameId}/evidence`);
+      this.evidenceList = evRes.evidence;
+
+      this.renderCasePresentation();
+      this.showScreen('case-presentation');
+      this._updateSidebar(state);
+    });
+
+    this.socket.on('phase_advanced', async (data) => {
+      const state = data.game_state;
+      if (state.phase === 'evidence_preview') {
+        this.showScreen('evidence-preview');
+      } else if (state.phase === 'evidence_review') {
+        this.currentEvidenceIdx = 0;
+        await this.loadEvidence(0);
+        this.showScreen('evidence-eval');
+      }
+      this._updateSidebar(state);
+    });
+
+    this.socket.on('player_submitted', (data) => {
+      if (!this.hasSubmittedCurrentEvidence) return;
+      this._showWaiting(
+        'Waiting for other jurors...',
+        `${data.responses_received} of ${data.total_players} submitted`
+      );
+    });
+
+    this.socket.on('evidence_advanced', async (data) => {
+      this._hideWaiting();
+      const nextIdx = data.next_evidence_index;
+      await this.loadEvidence(nextIdx);
+      this._updateSidebar(data.game_state);
+    });
+
+    this.socket.on('verdict_ready', async (data) => {
+      this._hideWaiting();
+      this._updateSidebar(data.game_state);
+      await this.showVerdict();
+    });
+
+    // Reconnection
+    this.socket.on('state_restored', async (data) => {
+      this.gameId = data.game_id;
+      if (data.player_id) this.playerId = data.player_id;
+
+      const state = data.game_state;
+      this.isHost = state.host_player_id === this.playerId;
+
+      if (state.phase === 'setup') {
+        this._renderLobby(state);
+      } else {
+        const caseRes = await this.api(`/games/${this.gameId}/case`);
+        this.caseData = caseRes;
+        this.priorDb = caseRes.prior_info.db;
+
+        const evRes = await this.api(`/games/${this.gameId}/evidence`);
+        this.evidenceList = evRes.evidence;
+
+        if (data.player_state) {
+          this.currentDb = data.player_state.current_evidence_db;
+          this.thresholdDb = data.player_state.guilt_threshold_db;
+          this.responses = (data.player_state.running_snapshots || []).map(s => ({
+            name: s.evidence_name,
+            db_update: s.db_update,
+          }));
+        } else {
+          this.currentDb = caseRes.prior_info.db;
+        }
+
+        this.renderCasePresentation();
+
+        if (state.phase === 'case_presentation') {
+          this.showScreen('case-presentation');
+        } else if (state.phase === 'evidence_preview') {
+          this.showScreen('evidence-preview');
+        } else if (state.phase === 'evidence_review') {
+          this.currentEvidenceIdx = state.current_evidence_index;
+          await this.loadEvidence(state.current_evidence_index);
+          this.showScreen('evidence-eval');
+        } else if (state.phase === 'verdict' || state.phase === 'completed') {
+          await this.showVerdict();
+        }
+        this._updateSidebar(state);
+      }
+    });
+
+    this.socket.on('disconnect', () => {
+      // Will auto-reconnect via Socket.IO
+    });
+
+    this.socket.on('reconnect', () => {
+      const savedGameId = sessionStorage.getItem('bcg_gameId');
+      const savedPlayerId = sessionStorage.getItem('bcg_playerId');
+      if (savedGameId && savedPlayerId) {
+        this.socket.emit('request_state', {
+          game_id: savedGameId,
+          player_id: savedPlayerId,
+        });
+      }
+    });
+  },
+
+  _saveSession() {
+    sessionStorage.setItem('bcg_gameId', this.gameId);
+    sessionStorage.setItem('bcg_playerId', this.playerId);
+  },
+
+  _tryReconnect() {
+    const savedGameId = sessionStorage.getItem('bcg_gameId');
+    const savedPlayerId = sessionStorage.getItem('bcg_playerId');
+    if (savedGameId && savedPlayerId) {
+      this.isMultiplayer = true;
+      this._connectSocket(() => {
+        this.socket.emit('request_state', {
+          game_id: savedGameId,
+          player_id: savedPlayerId,
+        });
+      });
+    }
   },
 
   // ---- Utility ----
@@ -410,4 +868,5 @@ const App = {
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   App.setThreshold(100);
+  App._tryReconnect();
 });

@@ -238,6 +238,10 @@ class BayesianGame:
         self.max_players = 12
         self.responses_for_current_evidence: Dict[str, PlayerResponse] = {}
         self.feedback: List[Dict] = []
+        self.host_player_id: Optional[str] = None
+
+    def is_host(self, player_id: str) -> bool:
+        return self.host_player_id == player_id
 
     def _generate_game_id(self) -> str:
         return f"game_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -371,7 +375,7 @@ class BayesianGame:
                 pid: {
                     "name": player.name,
                     "is_connected": player.is_connected,
-                    "player_type": player.type if hasattr(player, "type") else player.player_type,
+                    "player_type": player.player_type,
                     "current_guilt_probability": player.get_current_guilt_probability(),
                     "current_evidence_db": player.current_evidence_db,
                     "responses_count": len(player.responses),
@@ -381,6 +385,7 @@ class BayesianGame:
             },
             "responses_received": len(self.responses_for_current_evidence),
             "waiting_for_responses": not self.all_players_responded(),
+            "host_player_id": self.host_player_id,
         }
 
         if self.phase == GamePhase.EVIDENCE_REVIEW:

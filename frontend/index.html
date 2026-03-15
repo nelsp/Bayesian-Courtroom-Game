@@ -11,6 +11,27 @@
 <body>
   <div id="app">
 
+    <!-- Player Sidebar (visible during screens 4-7) -->
+    <aside id="player-sidebar" class="player-sidebar hidden">
+      <button class="sidebar-toggle" id="sidebar-toggle" onclick="App.toggleSidebar()">
+        <span class="sidebar-toggle-icon">&#9776;</span>
+        <span class="sidebar-badge" id="sidebar-badge">0</span>
+      </button>
+      <div class="sidebar-panel" id="sidebar-panel">
+        <h3>Jury Panel</h3>
+        <div class="sidebar-player-list" id="sidebar-player-list"></div>
+      </div>
+    </aside>
+
+    <!-- Waiting Overlay -->
+    <div id="waiting-overlay" class="waiting-overlay hidden">
+      <div class="waiting-content">
+        <div class="waiting-spinner"></div>
+        <p id="waiting-text">Waiting for other jurors...</p>
+        <div class="waiting-progress" id="waiting-progress-text"></div>
+      </div>
+    </div>
+
     <!-- Screen 1: Welcome -->
     <section id="screen-welcome" class="screen active">
       <div class="screen-content welcome-content">
@@ -20,6 +41,28 @@
           <p class="tagline">Weigh the evidence. Decide the verdict.<br>How certain must you be?</p>
         </div>
         <button class="btn btn-primary btn-lg" onclick="App.showScreen('case-select')">Start a New Case</button>
+
+        <div class="join-section" id="join-section">
+          <div class="join-divider"><span>or</span></div>
+          <button class="btn btn-secondary btn-lg" id="join-btn" onclick="App.showJoinInput()">Join a Game</button>
+          <div class="join-input-area hidden" id="join-input-area">
+            <input type="text" id="join-code-input" class="join-code-field" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters">
+            <input type="text" id="join-name-input" class="join-name-field" placeholder="Your name" maxlength="20" autocomplete="off">
+            <div class="join-threshold-section">
+              <p class="join-threshold-label">Your conviction standard:</p>
+              <div class="join-threshold-options">
+                <button class="threshold-btn join-threshold-btn" data-tolerance="10" onclick="App.setThreshold(10)">90%</button>
+                <button class="threshold-btn join-threshold-btn" data-tolerance="20" onclick="App.setThreshold(20)">95%</button>
+                <button class="threshold-btn join-threshold-btn selected" data-tolerance="100" onclick="App.setThreshold(100)">99%</button>
+                <button class="threshold-btn join-threshold-btn" data-tolerance="200" onclick="App.setThreshold(200)">99.5%</button>
+                <button class="threshold-btn join-threshold-btn" data-tolerance="1000" onclick="App.setThreshold(1000)">99.9%</button>
+              </div>
+              <p class="join-threshold-db-display">Threshold: <span id="join-threshold-db">20.0 dB</span></p>
+            </div>
+            <button class="btn btn-primary btn-lg" onclick="App.joinGameByCode()">Join Room</button>
+          </div>
+        </div>
+
         <details class="how-to-play">
           <summary>How to Play</summary>
           <div class="how-to-content">
@@ -58,6 +101,12 @@
           <h2>Set Your Standard</h2>
         </div>
         <p class="guidance-text">Before you see the case, decide how certain you need to be to convict. What false-conviction rate can you accept?</p>
+
+        <div class="host-name-input" id="host-name-input">
+          <label for="host-name">Your Name</label>
+          <input type="text" id="host-name" class="join-name-field" placeholder="Your name" maxlength="20" value="Host" autocomplete="off">
+        </div>
+
         <div class="threshold-options">
           <button class="threshold-btn" data-tolerance="10" onclick="App.setThreshold(10)">
             <span class="threshold-pct">90%</span>
@@ -90,7 +139,39 @@
             <button class="toggle-btn" data-method="direct" onclick="App.setInputMethod('direct')">Exact Probability</button>
           </div>
         </div>
-        <button class="btn btn-primary btn-lg" onclick="App.startCase()">Continue</button>
+
+        <div class="start-mode-buttons">
+          <button class="btn btn-primary btn-lg" onclick="App.startCase()">Play Solo</button>
+          <button class="btn btn-accent btn-lg" onclick="App.createMultiplayerRoom()">Create Multiplayer Room</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 3b: Lobby -->
+    <section id="screen-lobby" class="screen">
+      <div class="screen-content">
+        <div class="screen-header">
+          <button class="btn-back" onclick="App.leaveLobby()">&larr;</button>
+          <h2>Game Lobby</h2>
+        </div>
+
+        <div class="lobby-room-code">
+          <p class="lobby-label">Share this code to invite jurors</p>
+          <div class="room-code-display" id="room-code-display" onclick="App.copyRoomCode()">
+            <span id="room-code-text">----</span>
+            <span class="copy-hint">tap to copy</span>
+          </div>
+        </div>
+
+        <div class="lobby-player-section">
+          <div class="lobby-player-count" id="lobby-player-count">1 of 12 jurors</div>
+          <div class="lobby-player-list" id="lobby-player-list"></div>
+        </div>
+
+        <div class="lobby-actions" id="lobby-actions">
+          <button class="btn btn-primary btn-lg" id="lobby-start-btn" onclick="App.hostStartGame()" style="display:none">Start Game</button>
+          <p class="waiting-for-host" id="lobby-waiting" style="display:none">Waiting for host to start...</p>
+        </div>
       </div>
     </section>
 
@@ -110,7 +191,8 @@
           <div id="prior-info" class="prior-info"></div>
         </div>
         <div id="context-sections"></div>
-        <button class="btn btn-primary btn-lg" onclick="App.showScreen('evidence-preview')">Review the Evidence List</button>
+        <button class="btn btn-primary btn-lg host-control" id="btn-to-preview" onclick="App.advanceToEvidencePreview()">Review the Evidence List</button>
+        <p class="waiting-for-host host-waiting-msg hidden" id="wait-case-pres">Waiting for host to continue...</p>
       </div>
     </section>
 
@@ -123,7 +205,8 @@
         </div>
         <p class="evidence-count" id="evidence-count-text"></p>
         <div id="evidence-preview-list" class="evidence-preview-list"></div>
-        <button class="btn btn-primary btn-lg" onclick="App.beginEvaluation()">Begin Evaluation</button>
+        <button class="btn btn-primary btn-lg host-control" id="btn-begin-eval" onclick="App.beginEvaluation()">Begin Evaluation</button>
+        <p class="waiting-for-host host-waiting-msg hidden" id="wait-ev-preview">Waiting for host to begin...</p>
       </div>
     </section>
 
@@ -228,6 +311,25 @@
 
         <div class="verdict-announcement" id="verdict-announcement"></div>
 
+        <!-- Jury Panel Results (multiplayer) -->
+        <div id="jury-panel-results" class="jury-panel-results hidden">
+          <h3>Jury Panel Results</h3>
+          <div class="jury-table-container">
+            <table class="jury-table" id="jury-table">
+              <thead>
+                <tr>
+                  <th>Juror</th>
+                  <th>Final dB</th>
+                  <th>Probability</th>
+                  <th>Verdict</th>
+                </tr>
+              </thead>
+              <tbody id="jury-table-body"></tbody>
+            </table>
+          </div>
+          <div class="group-verdict-banner" id="group-verdict-banner"></div>
+        </div>
+
         <div id="reference-comparison" class="reference-comparison"></div>
 
         <details class="detailed-results">
@@ -241,6 +343,7 @@
 
   </div>
 
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="/js/visualizations.js"></script>
   <script src="/js/evidence-input.js"></script>
   <script src="/js/app.js"></script>

@@ -16,7 +16,7 @@ Every case file must be a JSON file in the `cases/` directory conforming to `cas
 - `name`: Display title
 - `summary`: One-sentence hook for the case card (≤120 chars)
 - `description`: Full narrative read during case presentation
-- `image`: Filename of cover image in `cases/images/`
+- `image`: Filename of cover .jpg image (2:1 aspect ratio) in `cases/images/`
 - `population`: Number of potential suspects (determines prior)
 - `setting`: Location and time
 
